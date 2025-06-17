@@ -9,6 +9,9 @@ import Checkbox from "@mui/material/Checkbox";
 import ListItemText from "@mui/material/ListItemText";
 import IconButton from "@mui/material/IconButton";
 import DeleteIcon from "@mui/icons-material/Delete";
+import EditIcon from "@mui/icons-material/Edit";
+import SaveIcon from "@mui/icons-material/Save";
+import CloseIcon from "@mui/icons-material/Close";
 
 interface Todo {
   id: number;
@@ -19,6 +22,8 @@ interface Todo {
 const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [input, setInput] = useState<string>("");
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editInput, setEditInput] = useState<string>("");
 
   const addTodo = (): void => {
     const trimmed = input.trim();
@@ -42,12 +47,39 @@ const App: React.FC = () => {
     setTodos((prev) => prev.filter((todo) => todo.id !== id));
   };
 
+  const startEdit = (todo: Todo): void => {
+    setEditingId(todo.id);
+    setEditInput(todo.text);
+  };
+
+  const saveEdit = (id: number): void => {
+    const trimmed = editInput.trim();
+    if (!trimmed) {
+      setEditingId(null);
+      return;
+    }
+    setTodos((prev) =>
+      prev.map((todo) => (todo.id === id ? { ...todo, text: trimmed } : todo))
+    );
+    setEditingId(null);
+    setEditInput("");
+  };
+
+  const cancelEdit = (): void => {
+    setEditingId(null);
+    setEditInput("");
+  };
+
   const handleKeyPress = (e: KeyboardEvent<HTMLInputElement>): void => {
     if (e.key === "Enter") addTodo();
   };
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>): void => {
     setInput(e.target.value);
+  };
+
+  const handleEditChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    setEditInput(e.target.value);
   };
 
   return (
@@ -90,9 +122,25 @@ const App: React.FC = () => {
             <ListItem
               key={todo.id}
               secondaryAction={
-                <IconButton edge="end" onClick={() => removeTodo(todo.id)}>
-                  <DeleteIcon />
-                </IconButton>
+                editingId === todo.id ? (
+                  <>
+                    <IconButton edge="end" onClick={() => saveEdit(todo.id)}>
+                      <SaveIcon />
+                    </IconButton>
+                    <IconButton edge="end" onClick={cancelEdit}>
+                      <CloseIcon />
+                    </IconButton>
+                  </>
+                ) : (
+                  <>
+                    <IconButton edge="end" onClick={() => startEdit(todo)}>
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton edge="end" onClick={() => removeTodo(todo.id)}>
+                      <DeleteIcon />
+                    </IconButton>
+                  </>
+                )
               }
             >
               <ListItemIcon>
@@ -102,13 +150,26 @@ const App: React.FC = () => {
                   onChange={() => toggleTodo(todo.id)}
                 />
               </ListItemIcon>
-              <ListItemText
-                primary={todo.text}
-                sx={{
-                  textDecoration: todo.completed ? "line-through" : "none",
-                  color: todo.completed ? "text.disabled" : "text.primary",
-                }}
-              />
+              {editingId === todo.id ? (
+                <TextField
+                  fullWidth
+                  variant="standard"
+                  value={editInput}
+                  onChange={handleEditChange}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveEdit(todo.id);
+                    if (e.key === "Escape") cancelEdit();
+                  }}
+                />
+              ) : (
+                <ListItemText
+                  primary={todo.text}
+                  sx={{
+                    textDecoration: todo.completed ? "line-through" : "none",
+                    color: todo.completed ? "text.disabled" : "text.primary",
+                  }}
+                />
+              )}
             </ListItem>
           ))}
         </List>
