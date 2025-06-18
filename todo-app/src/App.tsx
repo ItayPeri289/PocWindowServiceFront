@@ -1,4 +1,10 @@
-import React, { useState, type KeyboardEvent, type ChangeEvent } from "react";
+import React, {
+  useState,
+  useEffect,
+  type KeyboardEvent,
+  type ChangeEvent,
+} from "react";
+import axios from "axios";
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
@@ -14,53 +20,84 @@ import SaveIcon from "@mui/icons-material/Save";
 import CloseIcon from "@mui/icons-material/Close";
 
 interface Todo {
-  id: number;
-  text: string;
-  completed: boolean;
+  id: string;
+  name: string;
+  description?: string;
+  isCompleted: boolean;
 }
+
+const API_URL = "https://localhost:5001/tasks";
 
 const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [input, setInput] = useState<string>("");
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [editInput, setEditInput] = useState<string>("");
 
+  // Fetch all tasks
+  useEffect(() => {
+    axios
+      .get<Todo[]>(API_URL)
+      .then((response) => setTodos(response.data))
+      .catch(console.error);
+  }, []);
+
+  // Add a new task
   const addTodo = (): void => {
     const trimmed = input.trim();
     if (!trimmed) return;
-    setTodos((prev) => [
-      ...prev,
-      { id: Date.now(), text: trimmed, completed: false },
-    ]);
+    axios
+      .post<Todo>(API_URL, { name: trimmed, isCompleted: false })
+      .then((response) => setTodos((prev) => [...prev, response.data]))
+      .catch(console.error);
     setInput("");
   };
 
-  const toggleTodo = (id: number): void => {
-    setTodos((prev) =>
-      prev.map((todo) =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo
+  // Toggle completion
+  const toggleTodo = (todo: Todo): void => {
+    axios
+      .put(`${API_URL}/${todo.id}`, { ...todo, isCompleted: !todo.isCompleted })
+      .then(() =>
+        setTodos((prev) =>
+          prev.map((t) =>
+            t.id === todo.id ? { ...t, isCompleted: !t.isCompleted } : t
+          )
+        )
       )
-    );
+      .catch(console.error);
   };
 
-  const removeTodo = (id: number): void => {
-    setTodos((prev) => prev.filter((todo) => todo.id !== id));
+  // Delete a task
+  const removeTodo = (id: string): void => {
+    axios
+      .delete(`${API_URL}/${id}`)
+      .then(() => setTodos((prev) => prev.filter((t) => t.id !== id)))
+      .catch(console.error);
   };
 
+  // Start editing
   const startEdit = (todo: Todo): void => {
     setEditingId(todo.id);
-    setEditInput(todo.text);
+    setEditInput(todo.name);
   };
 
-  const saveEdit = (id: number): void => {
+  // Save edit
+  const saveEdit = (id: string): void => {
     const trimmed = editInput.trim();
     if (!trimmed) {
       setEditingId(null);
       return;
     }
-    setTodos((prev) =>
-      prev.map((todo) => (todo.id === id ? { ...todo, text: trimmed } : todo))
-    );
+    const todo = todos.find((t) => t.id === id);
+    if (!todo) return;
+    axios
+      .put(`${API_URL}/${id}`, { ...todo, name: trimmed })
+      .then(() =>
+        setTodos((prev) =>
+          prev.map((t) => (t.id === id ? { ...t, name: trimmed } : t))
+        )
+      )
+      .catch(console.error);
     setEditingId(null);
     setEditInput("");
   };
@@ -74,13 +111,10 @@ const App: React.FC = () => {
     if (e.key === "Enter") addTodo();
   };
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement>): void => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>): void =>
     setInput(e.target.value);
-  };
-
-  const handleEditChange = (e: ChangeEvent<HTMLInputElement>): void => {
+  const handleEditChange = (e: ChangeEvent<HTMLInputElement>): void =>
     setEditInput(e.target.value);
-  };
 
   return (
     <Box
@@ -146,8 +180,8 @@ const App: React.FC = () => {
               <ListItemIcon>
                 <Checkbox
                   edge="start"
-                  checked={todo.completed}
-                  onChange={() => toggleTodo(todo.id)}
+                  checked={todo.isCompleted}
+                  onChange={() => toggleTodo(todo)}
                 />
               </ListItemIcon>
               {editingId === todo.id ? (
@@ -163,10 +197,10 @@ const App: React.FC = () => {
                 />
               ) : (
                 <ListItemText
-                  primary={todo.text}
+                  primary={todo.name}
                   sx={{
-                    textDecoration: todo.completed ? "line-through" : "none",
-                    color: todo.completed ? "text.disabled" : "text.primary",
+                    textDecoration: todo.isCompleted ? "line-through" : "none",
+                    color: todo.isCompleted ? "text.disabled" : "text.primary",
                   }}
                 />
               )}
