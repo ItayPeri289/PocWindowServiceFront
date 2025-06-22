@@ -4,7 +4,7 @@ import React, {
   type KeyboardEvent,
   type ChangeEvent,
 } from "react";
-import axios from "axios";
+import { apiClient } from "./axios-setup"; // <-- import the client
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
@@ -26,8 +26,6 @@ interface Todo {
   isCompleted: boolean;
 }
 
-const API_URL = "https://localhost:5001/tasks";
-
 const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [input, setInput] = useState<string>("");
@@ -36,8 +34,8 @@ const App: React.FC = () => {
 
   // Fetch all tasks
   useEffect(() => {
-    axios
-      .get<Todo[]>(API_URL)
+    apiClient
+      .get<Todo[]>("/tasks")
       .then((response) => setTodos(response.data))
       .catch(console.error);
   }, []);
@@ -46,17 +44,19 @@ const App: React.FC = () => {
   const addTodo = (): void => {
     const trimmed = input.trim();
     if (!trimmed) return;
-    axios
-      .post<Todo>(API_URL, { name: trimmed, isCompleted: false })
+
+    apiClient
+      .post<Todo>("/tasks", { name: trimmed, isCompleted: false })
       .then((response) => setTodos((prev) => [...prev, response.data]))
       .catch(console.error);
+
     setInput("");
   };
 
   // Toggle completion
   const toggleTodo = (todo: Todo): void => {
-    axios
-      .put(`${API_URL}/${todo.id}`, { ...todo, isCompleted: !todo.isCompleted })
+    apiClient
+      .put(`/tasks/${todo.id}`, { ...todo, isCompleted: !todo.isCompleted })
       .then(() =>
         setTodos((prev) =>
           prev.map((t) =>
@@ -69,8 +69,8 @@ const App: React.FC = () => {
 
   // Delete a task
   const removeTodo = (id: string): void => {
-    axios
-      .delete(`${API_URL}/${id}`)
+    apiClient
+      .delete(`/tasks/${id}`)
       .then(() => setTodos((prev) => prev.filter((t) => t.id !== id)))
       .catch(console.error);
   };
@@ -90,14 +90,16 @@ const App: React.FC = () => {
     }
     const todo = todos.find((t) => t.id === id);
     if (!todo) return;
-    axios
-      .put(`${API_URL}/${id}`, { ...todo, name: trimmed })
+
+    apiClient
+      .put(`/tasks/${id}`, { ...todo, name: trimmed })
       .then(() =>
         setTodos((prev) =>
           prev.map((t) => (t.id === id ? { ...t, name: trimmed } : t))
         )
       )
       .catch(console.error);
+
     setEditingId(null);
     setEditInput("");
   };
