@@ -4,7 +4,8 @@ import React, {
   type KeyboardEvent,
   type ChangeEvent,
 } from "react";
-import { apiClient } from "./axios-setup"; // <-- import the client
+import { v4 as uuidv4 } from "uuid"; // ← import UUID generator
+import { apiClient } from "./axios-setup";
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
@@ -40,14 +41,25 @@ const App: React.FC = () => {
       .catch(console.error);
   }, []);
 
-  // Add a new task
+  // Add a new task (with client-generated ID)
   const addTodo = (): void => {
     const trimmed = input.trim();
     if (!trimmed) return;
 
+    // 1) generate the ID on the front
+    const newTodo: Todo = {
+      id: uuidv4(),
+      name: trimmed,
+      isCompleted: false,
+    };
+
+    // 2) send it to your API (and, via the interceptor, to your Windows service)
     apiClient
-      .post<Todo>("/tasks", { name: trimmed, isCompleted: false })
-      .then((response) => setTodos((prev) => [...prev, response.data]))
+      .post<Todo>("/tasks", newTodo)
+      .then(() => {
+        // 3) update UI with exactly the same ID you generated
+        setTodos((prev) => [...prev, newTodo]);
+      })
       .catch(console.error);
 
     setInput("");
