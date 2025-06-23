@@ -22,7 +22,6 @@ import CloseIcon from "@mui/icons-material/Close";
 interface Todo {
   id: string;
   name: string;
-  description?: string;
   isCompleted: boolean;
 }
 
@@ -56,7 +55,10 @@ const App: React.FC = () => {
   // Toggle completion
   const toggleTodo = (todo: Todo): void => {
     apiClient
-      .put(`/tasks/${todo.id}`, { ...todo, isCompleted: !todo.isCompleted })
+      .put(`/tasks/${todo.id}`, {
+        ...todo,
+        isCompleted: !todo.isCompleted,
+      })
       .then(() =>
         setTodos((prev) =>
           prev.map((t) =>
