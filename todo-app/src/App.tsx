@@ -4,8 +4,9 @@ import React, {
   type KeyboardEvent,
   type ChangeEvent,
 } from "react";
-import { v4 as uuidv4 } from "uuid"; // ← import UUID generator
-import { apiClient } from "./axios-setup";
+import axios from "axios";
+import { v4 as uuidv4 } from "uuid";
+import { apiClient, API_URL } from "./axios-setup";
 import Box from "@mui/material/Box";
 import TextField from "@mui/material/TextField";
 import Button from "@mui/material/Button";
@@ -19,6 +20,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import SaveIcon from "@mui/icons-material/Save";
 import CloseIcon from "@mui/icons-material/Close";
+import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
+import Typography from "@mui/material/Typography";
 
 interface Todo {
   id: string;
@@ -31,6 +34,20 @@ const App: React.FC = () => {
   const [input, setInput] = useState<string>("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editInput, setEditInput] = useState<string>("");
+  const [apiOnline, setApiOnline] = useState<boolean>(false);
+
+  // Poll API health every 10 seconds
+  useEffect(() => {
+    const checkHealth = () => {
+      axios
+        .get(`${API_URL}/health`, { timeout: 2000 })
+        .then(() => setApiOnline(true))
+        .catch(() => setApiOnline(false));
+    };
+    checkHealth();
+    const intervalId = setInterval(checkHealth, 10000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   // Fetch all tasks
   useEffect(() => {
@@ -45,20 +62,15 @@ const App: React.FC = () => {
     const trimmed = input.trim();
     if (!trimmed) return;
 
-    // 1) generate the ID on the front
     const newTodo: Todo = {
       id: uuidv4(),
       name: trimmed,
       isCompleted: false,
     };
 
-    // 2) send it to your API (and, via the interceptor, to your Windows service)
     apiClient
       .post<Todo>("/tasks", newTodo)
-      .then(() => {
-        // 3) update UI with exactly the same ID you generated
-        setTodos((prev) => [...prev, newTodo]);
-      })
+      .then(() => setTodos((prev) => [...prev, newTodo]))
       .catch(console.error);
 
     setInput("");
@@ -67,10 +79,7 @@ const App: React.FC = () => {
   // Toggle completion
   const toggleTodo = (todo: Todo): void => {
     apiClient
-      .put(`/tasks/${todo.id}`, {
-        ...todo,
-        isCompleted: !todo.isCompleted,
-      })
+      .put(`/tasks/${todo.id}`, { ...todo, isCompleted: !todo.isCompleted })
       .then(() =>
         setTodos((prev) =>
           prev.map((t) =>
@@ -148,6 +157,20 @@ const App: React.FC = () => {
         borderRadius={2}
         boxShadow={3}
       >
+        {/* API status indicator */}
+        <Box display="flex" alignItems="center" mb={2}>
+          <FiberManualRecordIcon
+            sx={{
+              color: apiOnline ? "success.main" : "error.main",
+              fontSize: 14,
+              mr: 1,
+            }}
+          />
+          <Typography variant="body2">
+            API is {apiOnline ? "Online" : "Offline"}
+          </Typography>
+        </Box>
+
         <Box mb={2}>
           <TextField
             label="Add a new task"
